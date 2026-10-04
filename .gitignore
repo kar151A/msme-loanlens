@@ -1,13 +1,18 @@
 .venv/
 __pycache__/
 *.pyc
-
 .env
-
 .vscode/
 
+# Generated datasets
 data/*.csv
 data/*.json
 
-*.pkl
-data/*.csv
+# Generated models / indexes
+models/*.pkl
+models/*.index
+models/*.faiss
+
+# Logs / OS files
+*.log
+.DS_Store
