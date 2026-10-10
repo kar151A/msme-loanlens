@@ -92,3 +92,65 @@ def predict(application: LoanApplication):
             status_code=500,
             detail="Prediction failed. Check backend logs."
         ) from error
+
+
+from threading import Lock
+
+from fastapi.concurrency import run_in_threadpool
+
+_rag_pipeline = None
+_rag_load_lock = Lock()
+_rag_inference_lock = Lock()
+
+
+def get_rag_pipeline():
+    global _rag_pipeline
+
+    if _rag_pipeline is None:
+        with _rag_load_lock:
+            if _rag_pipeline is None:
+                # Import lazily because rag_pipeline.py loads
+                # the embedding model and LLM during import.
+                from src.llm import rag_pipeline
+                _rag_pipeline = rag_pipeline
+
+    return _rag_pipeline
+
+
+def run_rag_analysis(application_data):
+    pipeline = get_rag_pipeline()
+
+    # Serialize inference for the initial local prototype.
+    with _rag_inference_lock:
+        return pipeline.analyze_application(application_data)
+
+
+@app.post("/analyze")
+async def analyze(application: LoanApplication):
+    try:
+        result = await run_in_threadpool(
+            run_rag_analysis,
+            application.model_dump()
+        )
+
+        return {
+            "decision": str(result["prediction"]),
+            "approval_probability": round(
+                float(result["approval_probability"]), 4
+            ),
+            "similar_cases": result["similar_cases"],
+            "counterfactuals": result["counterfactuals"],
+            "ai_explanation": result["report"],
+            "disclaimer": (
+                "Educational prototype using synthetic data. "
+                "Not a real lending decision."
+            )
+        }
+
+    except Exception as error:
+        import logging
+        logging.exception("RAG analysis failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Analysis failed. Check server logs."
+        ) from error
