@@ -687,38 +687,48 @@ def generate_llm_response(
     )
 
 
+    
     prompt = f"""
-You are LoanLens, an explainable MSME loan decision assistant.
+You are LoanLens, an AI assistant explaining the
+output of a synthetic MSME loan prediction system.
 
-You must only use the information supplied below.
+STRICT RULES:
+1. Use only the supplied model results and retrieved records.
+2. Do not invent financial regulations or bank policies.
+3. Do not describe CIBIL 720 as low without evidence.
+4. Do not describe a debt ratio of 0.27 as high.
+5. Do not claim that retrieved synthetic cases are real bank records.
+6. Cite application IDs when discussing similar cases.
+7. Do not invent reasons for the model prediction.
+8. Counterfactuals are hypothetical model estimates,
+   not guaranteed improvements or causal effects.
+9. Distinguish observed applicant facts from model predictions.
+10. If evidence is insufficient, explicitly say so.
 
-Do not guarantee that a real bank will approve or reject a loan.
-
-Clearly state that the result is a model-based estimate from synthetic prototype data.
-
-CURRENT APPLICATION
+CURRENT APPLICATION:
 {application_to_text(application)}
 
-MODEL RESULT
-Predicted decision: {prediction}
-Approval probability: {approval_probability * 100:.2f}%
+MODEL PREDICTION:
+Decision: {prediction}
+Estimated approval probability: {approval_probability * 100:.2f}%
 
-SIMILAR HISTORICAL CASES
+RETRIEVED SYNTHETIC CASES:
 {context}
 
-COUNTERFACTUAL ANALYSIS
+MODEL COUNTERFACTUALS:
 {counterfactual_text}
 
-Prepare a concise report using exactly these sections:
+Generate a report with these sections:
 
 1. Predicted Decision
-2. Main Reasons
-3. Similar Historical Cases
-4. Recommended Improvements
-5. Important Disclaimer
+2. Applicant Financial Profile
+3. Similar Retrieved Cases (include application IDs)
+4. Counterfactual Scenarios
+5. Limitations and Disclaimer
 
-Use specific numbers wherever possible.
-Do not invent bank thresholds or lending policies.
+Use simple, professional English.
+Do not make unsupported claims about why the model
+made its prediction.
 """
 
 
@@ -756,10 +766,15 @@ Do not invent bank thresholds or lending policies.
     )
 
 
-    generated_ids = llm.generate(
-        **model_inputs,
-        max_new_tokens=500,
-        do_sample=False
+    # Generate the explanation without calculating gradients.
+# Pylance may incorrectly flag generate() for this model type.
+
+    with torch.inference_mode():
+        generated_ids = llm.generate(  # type: ignore[attr-defined]
+            **model_inputs,
+            max_new_tokens=500,
+            do_sample=False,
+            pad_token_id=tokenizer.eos_token_id
     )
 
 
