@@ -16,3 +16,17 @@ models/*.faiss
 # Logs / OS files
 *.log
 .DS_Store
+
+# Frontend dependencies
+app/node_modules/
+
+# Frontend production build
+app/dist/
+
+# TypeScript build cache
+app/*.tsbuildinfo
+
+# Environment variables
+app/.env
+app/.env.*
+!app/.env.example
